@@ -1,69 +1,58 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { legacyBodyHtml, legacyCss, legacyScript } from "./legacyData";
+
+const LEGACY_BOOT_GUARD = "__menuqr_legacy_boot__";
 
 export default function Home() {
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const [backendReady, setBackendReady] = useState(false);
+
+  useEffect(() => {
+    if (!rootRef.current || typeof document === "undefined") return;
+
+    if (typeof window !== "undefined" && (window as typeof window & { [LEGACY_BOOT_GUARD]?: boolean })[LEGACY_BOOT_GUARD]) {
+      return;
+    }
+
+    let styleTag = document.getElementById("legacy-website-style") as HTMLStyleElement | null;
+    if (!styleTag) {
+      styleTag = document.createElement("style");
+      styleTag.id = "legacy-website-style";
+      document.head.appendChild(styleTag);
+    }
+    styleTag.textContent = legacyCss;
+
+    const boot = async () => {
+      try {
+        if (typeof window !== "undefined") {
+          (window as typeof window & { [LEGACY_BOOT_GUARD]?: boolean })[LEGACY_BOOT_GUARD] = true;
+        }
+
+        const response = await fetch("/api/menu");
+        if (response.ok) {
+          setBackendReady(true);
+        }
+
+        const script = document.createElement("script");
+        script.textContent = legacyScript;
+        document.body.appendChild(script);
+      } catch (error) {
+        console.warn("Legacy page boot warning:", error);
+        if (typeof window !== "undefined") {
+          delete (window as typeof window & { [LEGACY_BOOT_GUARD]?: boolean })[LEGACY_BOOT_GUARD];
+        }
+      }
+    };
+
+    void boot();
+  }, []);
+
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className={styles.intro}>
-          <h1>
-            To get started, edit the{" "}
-            <code className={styles.code}>page.tsx</code> file.
-          </h1>
-          <p>
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className={styles.secondary}
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+    <>
+      <div ref={rootRef} dangerouslySetInnerHTML={{ __html: legacyBodyHtml }} />
+      {backendReady ? null : null}
+    </>
   );
 }
