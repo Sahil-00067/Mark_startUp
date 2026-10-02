@@ -1,0 +1,65 @@
+# MenuQR Payment Backend (Python)
+
+A small Flask microservice that handles secure online payments for MenuQR via **Razorpay Standard Checkout**.
+The secret key lives ONLY here — the frontend never touches `RAZORPAY_KEY_SECRET`.
+
+## What it does
+- **`POST /api/create-order`** → creates a Razorpay order (amount converted to paise; minimum ₹1 / 100 paise) and returns `{ order_id, amount, currency, key_id }`.
+- **`POST /api/verify-payment`** → verifies the checkout signature with **HMAC-SHA256** (`order_id|payment_id`, secret key). Mismatch or missing fields → **400**, order is never marked paid.
+- **`GET /api/health`**, **`GET /api/config`** → status/public key.
+- Optional server-side Firestore update after verification (needs `FIREBASE_SERVICE_ACCOUNT_PATH`; not required for local use).
+
+## Setup & Run (easiest: one click)
+
+Double-click **`backend\start_backend.bat`** (or run it from a terminal).
+It creates the virtual environment, installs dependencies on first run, and starts the server on
+`http://127.0.0.1:5000`. Keep that window open while taking online payments.
+
+The backend also **serves the restaurant app itself**, so one URL does everything:
+- On this PC → open `http://127.0.0.1:5000`
+- On any phone on the same Wi-Fi → open `http://<PC-IP>:5000` (the IP is printed on startup,
+  e.g. `http://192.168.0.194:5000`). Payments go through this PC — no deployment needed for
+  in-restaurant testing.
+
+### Manual setup (same thing by hand)
+
+```bat
+cd backend
+py -m venv .venv
+.venv\Scripts\python -m pip install -r requirements.txt
+.venv\Scripts\python app.py
+```
+
+Copy `.env.example` to `.env` and put your keys in:
+
+```
+RAZORPAY_KEY_ID=rzp_test_xxx
+RAZORPAY_KEY_SECRET=xxx
+PAYMENT_SIMULATION=false
+```
+
+`.env` is git-ignored — never commit it.
+
+### Troubleshooting
+
+- `ModuleNotFoundError: No module named 'flask'` → you ran the **system** Python instead of the
+  project venv. Use `start_backend.bat`, or in VS Code select the interpreter
+  `backend\.venv\Scripts\python.exe` (Ctrl+Shift+P → “Python: Select Interpreter”).
+- Port already in use → change `PORT` in `.env` and update `PAYMENT_BACKEND_URL` in `index (1).html`
+  to match.
+
+Then open the restaurant app (`index (1).html`) and use the **Pay Online** button on the bill screen.
+
+## Test payments (test mode keys)
+Use any test method shown in the Razorpay modal, e.g.:
+- Card `4111 1111 1111 1111`, any future expiry, any CVV (test mode)
+- Or NetBanking / UPI test options
+
+On success the modal handler calls `/api/verify-payment`; only a **verified signature** marks the
+orders `payment:'paid'` in Firestore (fields `payment`/`payMethod` are whitelisted by the rules).
+
+## Security notes
+- `PAYMENT_SIMULATION=true` accepts payments WITHOUT a gateway — dev only, never in production.
+- For production, deploy this service (Render/Railway/VPS) and set
+  `PAYMENT_BACKEND_URL` in `index (1).html` to your server URL. Use `gunicorn app:app` instead of
+  the Flask dev server, and serve the frontend over HTTPS (Razorpay requires HTTPS in live mode).

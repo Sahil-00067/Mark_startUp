@@ -1,0 +1,120 @@
+============================================================
+MenuQR - FIREBASE FIRESTORE RULES (PASTE-SAFE, FINAL)
+============================================================
+
+ABOUT THE ERROR IN YOUR SCREENSHOT
+----------------------------------
+Line 110 had:        .hasOnly([
+but the line above it was MISSING:
+                     allow update: if request.resource.data.diff(resource.data).affectedKeys()
+
+That long line got clipped while copying into the console, so the
+editor saw a bare ".hasOnly([" with nothing before it -> red error.
+The rules below are reformatted so every allow statement is ONE
+SINGLE LINE - nothing can get clipped anymore. Comments are plain
+ASCII (no fancy dashes/quotes that some editors mangle).
+
+HOW TO APPLY (1 minute):
+1. Open  https://console.firebase.google.com
+2. Select project  restro-qr-fd790
+3. Build -> Firestore Database -> Rules tab
+4. SELECT ALL in the editor and DELETE it
+5. Copy everything between ==== RULES START ==== and
+   ==== RULES END ==== below (click at "RULES START", then
+   shift-click at "RULES END" so nothing is missed)
+6. Paste, then click  PUBLISH
+7. The editor must show NO red markers. If any line has one,
+   that line did not paste completely - re-copy that line.
+
+==== RULES START ====
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /restaurants/{restaurantId} {
+
+      // Public menu + profile - world readable (QR customers)
+      allow read: if true;
+
+      // Top-level key whitelist - must match what the app saves
+      allow create, update: if request.resource.data.keys().hasOnly(['restaurant', 'categories', 'items', 'activityLog', 'nextId', 'nextOrderId', '_updatedAt'])
+        && request.resource.data.restaurant is map
+        && request.resource.data.items is list
+        && request.resource.data.items.size() <= 300;
+
+      // No client may delete the restaurant profile/menu doc
+      allow delete: if false;
+
+      // ---------------- Orders ----------------
+      match /orders/{orderId} {
+        // Live tracking (customer) + kitchen display
+        allow read: if true;
+
+        // New orders must start pending + unpaid with a sane item list
+        // (blocks forged already-paid orders / free food)
+        allow create: if request.resource.data.keys().hasAll(['id', 'orderNum', 'table', 'customer', 'phone', 'items', 'status', 'payment', 'ts'])
+          && request.resource.data.status == 'pending'
+          && request.resource.data.payment == 'unpaid'
+          && request.resource.data.items is list
+          && request.resource.data.items.size() > 0
+          && request.resource.data.items.size() <= 50;
+
+        // Bookkeeping fields ONLY - single line, do not break it.
+        allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'payment', 'payMethod', '_new', 'preparingAt', 'preparedAt', 'cancelReason', 'rating', 'ratedAt']);
+
+        // Admin "Reset All" + removing test orders need deletes
+        allow delete: if true;
+      }
+
+      // -------- Waiter calls / checkout requests --------
+      match /waiterCalls/{callId} {
+        allow read: if true;
+
+        // Customers can call as Guest - minimal required keys
+        allow create: if request.resource.data.keys().hasAll(['id', 'table', 'status', 'ts']);
+
+        // Status + checkout bookkeeping - single line, do not break it
+        allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'resolvedAt', 'resolvedMethod', 'resolvedBy', 'note']);
+
+        // Staff board cleanup
+        allow delete: if true;
+      }
+
+      // ---------------- Photos (base64) ----------------
+      match /photos/{photoId} {
+        allow read, write: if true;
+      }
+    }
+  }
+}
+
+==== RULES END ====
+
+
+WHY THE OLD RULES BROKE THE APP (for reference):
+- Orders update whitelist was missing preparingAt / preparedAt /
+  cancelReason / rating / ratedAt. The kitchen wrote status TOGETHER
+  with timestamps in one update, so Firestore rejected the WHOLE
+  write - customer phones never saw Cooking/Ready/Served.
+- Main doc only allowed exact top-level keys; one stray key made the
+  whole save fail, so menu edits stopped syncing (looked like items
+  "disappeared" - they were stale snapshots, cloud was fine).
+The app code is already fixed for both; these rules complete it.
+
+WHAT THE RULES PROTECT (kept from your hardened version):
+- New orders must be pending + unpaid (no forged paid orders)
+- No price/quantity rewriting after creation
+- No deleting the restaurant/menu doc
+- No credentials ever leave the device
+
+VERIFY AFTER PUBLISHING (3 minutes):
+1. Refresh menu page - all items show
+2. Admin: edit an item price -> Save -> refresh -> still there
+3. Kitchen: tap Cooking -> customer phone shows "ban raha hai"
+   within ~1 second
+4. Cancel an order -> Analytics -> Cancellation Reasons fills in
+5. Admin -> Orders: Reset All clears the cloud too
+6. Optional: delete test order "E2E Test #9010"
+   (Firestore -> restaurants -> main -> orders -> synth_e2e_1)

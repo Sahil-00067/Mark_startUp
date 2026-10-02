@@ -1,0 +1,10 @@
+# MenuQR payment backend — core dependencies (Razorpay checkout)
+flask>=3.0
+flask-cors>=4.0
+razorpay>=1.4.1
+python-dotenv>=1.0
+requests>=2.31
+
+# Optional extras — uncomment only if you use them:
+# stripe>=9.0            # needed only when STRIPE_SECRET_KEY is set in .env
+# firebase-admin>=6.5    # needed only when FIREBASE_SERVICE_ACCOUNT_PATH is set in .env
