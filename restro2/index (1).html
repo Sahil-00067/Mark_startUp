@@ -396,6 +396,29 @@ html[data-theme="dark"] .cust-section label span[style*="color:var(--red)"]{colo
 .upi-section{background:white;border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:13px;}
 .upi-id-display{background:var(--g-pale);border-radius:8px;padding:10px 13px;font-size:14px;color:var(--g);font-weight:700;text-align:center;letter-spacing:0.5px;}
 
+/* ===== SINGLE "PAY" SECTION (Card / App / Cash) ===== */
+.pay-box{background:white;border:1px solid var(--border);border-radius:16px;overflow:hidden;box-shadow:var(--shadow);margin-bottom:14px;}
+.pay-box-head{display:flex;align-items:center;gap:7px;padding:11px 14px;background:var(--g-pale);border-bottom:1px solid var(--border);font-size:11px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--g);}
+.pay-box-head .ic{width:15px;height:15px;}
+.pay-row{display:flex;align-items:center;gap:11px;width:100%;padding:13px 14px;background:transparent;border:0;border-bottom:1px solid var(--border);text-align:left;font-family:inherit;cursor:pointer;transition:background .2s var(--ease);}
+.pay-row:last-child{border-bottom:0;}
+.pay-row:active{background:var(--g-pale);}
+.pay-row:disabled{opacity:.55;cursor:not-allowed;}
+.pay-row-ic{width:36px;height:36px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.pay-row-ic .ic{width:19px;height:19px;}
+.pay-row-txt{flex:1;min-width:0;}
+.pay-row-txt b{display:block;font-size:14px;font-weight:700;color:var(--text);line-height:1.3;}
+.pay-row-txt small{display:block;font-size:11px;color:var(--muted);margin-top:2px;line-height:1.35;}
+.pay-row-arrow{font-size:19px;color:var(--muted);line-height:1;transition:transform .25s var(--ease);}
+.pay-app-list{background:var(--g-pale);border-top:1px solid var(--border);padding:11px 12px 12px;}
+.pay-app-grid{display:flex;flex-wrap:wrap;gap:8px;}
+.pay-app-btn{display:flex;align-items:center;gap:8px;padding:9px 13px;border-radius:12px;border:1.5px solid;background:#fff;font-size:12.5px;font-weight:700;font-family:inherit;cursor:pointer;box-shadow:var(--shadow);transition:transform .15s var(--ease);}
+.pay-app-btn:active{transform:scale(.97);}
+.pay-app-btn:disabled{opacity:.55;cursor:not-allowed;}
+.pay-app-btn .ic{width:16px;height:16px;}
+.pay-app-btn.full{width:100%;justify-content:center;margin-top:9px;}
+.pay-app-note{font-size:10.5px;color:var(--muted);margin:10px 2px 0;line-height:1.55;}
+
 /* PAYMENT RECORDS */
 .pay-record{background:white;border:1px solid var(--border);border-radius:var(--r);margin-bottom:8px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;box-shadow:var(--shadow);}
 .pay-record-left{flex:1;min-width:0;}
@@ -701,6 +724,10 @@ html[data-theme="dark"] #loginScreen .login-card button[onclick="showForgotPassw
 html[data-theme="dark"] #loginScreen .login-brand h1{color:#fff;}
 html[data-theme="dark"] .role-tab.active{background:#d7e5dc;color:#0b120e;}
 html[data-theme="dark"] .upi-section{background:#131c16;}
+html[data-theme="dark"] .pay-box{background:#131c16;}
+html[data-theme="dark"] .pay-box-head{background:rgba(255,255,255,0.035);color:#7fd0a5;}
+html[data-theme="dark"] .pay-app-list{background:rgba(255,255,255,0.035);}
+html[data-theme="dark"] .pay-app-btn{background:#131c16;}
 #loginScreen .login-brand h1{color:#fff;}
 html[data-theme="dark"] .step-label.done,html[data-theme="dark"] .total-row.grand span:last-child,html[data-theme="dark"] .sheet-item-price{color:#7fd0a5;}
 html[data-theme="dark"] .bill-order-card span[style*="color:var(--g)"]{color:#7fd0a5 !important;}
@@ -1457,14 +1484,52 @@ html[data-theme="dark"] ::selection{background:rgba(74,158,110,0.35);}
       <div id="billPayStatus" style="text-align:right"></div>
     </div>
     
-    <div id="paymentOptionsDiv">
-      <div style="display:flex;gap:9px;margin-bottom:14px;">
-        <button class="btn btn-ghost" style="flex:1;justify-content:center" onclick="payByCash()"><svg class="ic"><use href="#i-cash"/></svg> Pay Cash</button>
-        <button class="btn btn-blue" style="flex:1;justify-content:center" onclick="showUpiOption()"><svg class="ic"><use href="#i-phone"/></svg> Pay UPI App / QR</button>
-      </div>
-      <button id="gatewayBtn" class="btn btn-primary btn-full" style="display:none;margin-bottom:14px;background:linear-gradient(135deg, var(--g), #1f5f3a);box-shadow:0 8px 24px -4px rgba(12,45,28,0.25);" onclick="payByGateway()"><svg class="ic"><use href="#i-card"/></svg> Pay Online (Cards / UPI / NetBanking)</button>
+    <!-- ============================================================
+         SINGLE "PAY" SECTION — one block, three choices:
+           1) Pay by Card / NetBanking  → Razorpay (card + netbanking)
+           2) Pay by App                → expands to PhonePe / Google Pay /
+                                          Paytm / BHIM + "Other apps"
+                                          (all go through Razorpay UPI)
+           3) Pay Cash                  → waiter collects cash
+         ============================================================ -->
+    <div id="paymentOptionsDiv" class="pay-box">
+      <div class="pay-box-head"><svg class="ic"><use href="#i-coins"/></svg> Pay</div>
+
+      <!-- 1) Card / NetBanking -->
+      <button type="button" class="pay-row" id="payCardBtn" data-pay-btn
+        data-icon="<svg class='ic'><use href='#i-card'/></svg>"
+        data-label="Pay by Card / NetBanking"
+        onclick="payByGateway('card')">
+        <span class="pay-row-ic" style="background:var(--blue-light);color:var(--blue)"><svg class="ic"><use href="#i-card"/></svg></span>
+        <span class="pay-row-txt"><b>Pay by Card / NetBanking</b><small>Debit card, credit card ya bank se</small></span>
+        <span class="pay-row-arrow">›</span>
+      </button>
+
+      <!-- 2) App (UPI) — expands to the app list -->
+      <button type="button" class="pay-row" id="payAppRow" onclick="togglePayAppList()">
+        <span class="pay-row-ic" style="background:#f5effd;color:#5f259f"><svg class="ic"><use href="#i-phone"/></svg></span>
+        <span class="pay-row-txt"><b>Pay by App</b><small>PhonePe, Google Pay, Paytm, koi bhi UPI app</small></span>
+        <span class="pay-row-arrow" id="payAppArrow">›</span>
+      </button>
+      <div id="payAppList" class="pay-app-list" style="display:none"></div>
+
+      <!-- 3) Cash -->
+      <button type="button" class="pay-row" id="payCashBtn" data-pay-btn
+        data-icon="<svg class='ic'><use href='#i-cash'/></svg>"
+        data-label="Pay Cash"
+        onclick="payByCash()">
+        <span class="pay-row-ic" style="background:var(--g-pale);color:var(--g)"><svg class="ic"><use href="#i-cash"/></svg></span>
+        <span class="pay-row-txt"><b>Pay Cash</b><small>Cash de do, waiter bill lekar aayega</small></span>
+        <span class="pay-row-arrow">›</span>
+      </button>
     </div>
 
+    <!-- ============================================================
+         LEGACY DIRECT-UPI LINK/QR FLOW — DISABLED FOR NOW (kept for reference)
+         Online payments ab Razorpay ke through hote hain, isliye yeh
+         block comment out kar diya gaya hai. Re-enable karne ke liye
+         sirf niche wale </div> ko comment se bahar nikaal do aur JS me
+         showUpiOption() ka comment hata do.
     <div class="upi-section" id="billUpiSection" style="display:none">
       <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:9px" class="inline-ic"><svg class="ic"><use href="#i-card"/></svg> UPI SE PAYMENT KARO</div>
       <div class="upi-id-display" id="billUpiId"></div>
@@ -1472,6 +1537,7 @@ html[data-theme="dark"] ::selection{background:rgba(74,158,110,0.35);}
       <button class="btn btn-primary btn-full" style="margin-top:12px" onclick="confirmUpiPaid()"><svg class="ic"><use href="#i-check-c"/></svg> Maine UPI se payment kar di</button>
       <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:6px">Yeh button dabane ke baad admin confirm karega</div>
     </div>
+    ============================================================ -->
     
     <div style="display:flex;gap:9px;margin-top:14px;">
       <button class="btn btn-ghost" style="flex:1;justify-content:center" onclick="orderMoreItems()"><svg class="ic"><use href="#i-cart"/></svg> Order More</button>
@@ -2075,6 +2141,7 @@ function bootComplete() {
   currentView='menu';
   renderMenuScreen();
   initOnboard();
+  fetchGatewayKeyMode(); // surfaces the backend key mode (TEST MODE badge) early
   // PAY-AFTER-RELOAD FIX: if a session was never created (fresh QR scan) or was
   // ended with "Done", but the customer still has UNSETTLED orders (served but
   // unpaid, or still being prepared), rebuild the session from their saved
@@ -4024,10 +4091,51 @@ function renderBill(){
   document.getElementById('billGrandTotal').textContent='₹'+grandTotal;
   document.getElementById('billPayStatus').innerHTML=due>0?`<div style="font-size:11px;opacity:0.7">Amount Due</div><div style="font-size:22px;font-weight:700">₹${due}</div>`:`<div style="font-size:14px;font-weight:600"><span class="inline-ic"><svg class="ic"><use href="#i-check-c"/></svg> Fully Paid</span></div>`;
   document.getElementById('paymentOptionsDiv').style.display=due>0?'block':'none';
-  document.getElementById('billUpiSection').style.display='none';
-  // Show/hide the online-payment (Razorpay) button together with the other options
-  const gwBtn=document.getElementById('gatewayBtn');
-  if(gwBtn){gwBtn.style.display=due>0?'':'none';}
+  // Legacy direct-UPI section is commented out in the HTML — guard just in case.
+  const legacyUpiSec=document.getElementById('billUpiSection');
+  if(legacyUpiSec) legacyUpiSec.style.display='none';
+  // Always start with the "Pay by App" list collapsed on a fresh bill render.
+  _payAppOpen=false;
+  renderPayAppList();
+}
+
+// ------------------------------------------------------------
+// SINGLE PAY SECTION — "Pay by App" expands the UPI app list
+// ------------------------------------------------------------
+var _payAppOpen=false;
+
+// Default (most used) UPI apps. Clicking any of them opens Razorpay in
+// UPI-only mode, where the device shows EVERY UPI app installed on the phone.
+const PAY_UPI_APPS=[
+  {k:'phonepe',n:'PhonePe',   fg:'#5f259f',bg:'#f5effd',bd:'#d9c4f5'},
+  {k:'gpay',   n:'Google Pay',fg:'#1e40af',bg:'#f0f6ff',bd:'#b9d5ff'},
+  {k:'paytm',  n:'Paytm',     fg:'#003c58',bg:'#eff9fc',bd:'#badbe5'},
+  {k:'bhim',   n:'BHIM',      fg:'#f26522',bg:'#fff4ec',bd:'#ffd0b0'}
+];
+
+function togglePayAppList(){_payAppOpen=!_payAppOpen;renderPayAppList();}
+
+function renderPayAppList(){
+  const box=document.getElementById('payAppList'); if(!box) return;
+  const arrow=document.getElementById('payAppArrow');
+  if(arrow) arrow.style.transform=_payAppOpen?'rotate(90deg)':'';
+  if(!_payAppOpen){box.style.display='none';box.innerHTML='';return;}
+  if(_gatewayKeyMode===null) fetchGatewayKeyMode();
+
+  const btnHtml=(a,full)=>`<button type="button" class="pay-app-btn${full?' full':''}" data-pay-btn onclick="payByGateway('app','${a.k}','${a.n}')" style="color:${a.fg};background:${a.bg};border-color:${a.bd}"><svg class="ic"><use href="#i-phone"/></svg> ${a.n}</button>`;
+
+  const amount='₹'+Math.max(currentBillDue,0).toFixed(2);
+  box.innerHTML=
+    `<div style="font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin:0 2px 9px">Pay ${amount} with</div>`
+    +`<div class="pay-app-grid">${PAY_UPI_APPS.map(a=>btnHtml(a,false)).join('')}`
+    +btnHtml({k:'other',n:'Other apps on this phone',fg:'var(--g)',bg:'#fff',bd:'var(--border-strong)'},true)
+    +`</div>`
+    +(_gatewayKeyMode===false
+        ? `<div class="pay-app-note"><b style="color:var(--amber)">Test mode chal raha hai.</b> Razorpay ke test keys me UPI app flow (PhonePe / Google Pay / Paytm) <b>chalta hi nahi</b> — isliye abhi Card ya NetBanking se pay karein. Live keys lagte hi upar wali app list khul jayegi aur har app se seedha pay ho jayega.</div>`
+        : '')
+    +`<div class="pay-app-note">Razorpay ka secure payment window khulega, jisme is phone par installed <b>har UPI app</b> (PhonePe, Google Pay, Paytm, BHIM aur baaki) list hoga — wahan se apni app chuno aur pay karo. Paisa seedha restaurant ke account me, receipt Razorpay se.</div>`
+    +(upiAppFlowOnly() ? '' : `<div class="pay-app-note">Yeh browser UPI app launch nahi kar sakta (PC ya WhatsApp/Instagram ke andar) — isliye Razorpay ke window me UPI ID/QR, Card aur NetBanking bhi milenge. Asli phone par app list khulti hai.</div>`);
+  box.style.display='block';
 }
 
 function payByCash(){
@@ -4130,6 +4238,17 @@ function copyUpiId(id){
   function fallback(){const t=document.createElement('textarea');t.value=id;t.style.position='fixed';t.style.opacity='0';document.body.appendChild(t);t.select();try{document.execCommand('copy');done();}catch(e){showToast(id);}t.remove();}
 }
 
+/* ============================================================
+   LEGACY DIRECT-UPI LINK/QR FLOW — DISABLED FOR NOW
+   ------------------------------------------------------------
+   Yeh woh flow hai jo pehle use ho raha tha: restaurant ke apne
+   UPI ID par seedha `upi://` / `intent://` deep-link bana kar app
+   kholna. PhonePe/GPay ismein fail ho jate the, isliye ab saara
+   online payment RAZORPAY ke through jaata hai (see payByGateway).
+   Code yahan pada hai — future me wapas chahiye to sirf is block
+   ke shuru aur end ke comment markers hata do, aur HTML me
+   #billUpiSection ka comment bhi hata do.
+   ============================================================
 function showUpiOption(){
   const upiSec=document.getElementById('billUpiSection');
   const rawId=(appState.restaurant.upiId||'').trim();
@@ -4202,6 +4321,7 @@ function showUpiOption(){
   upiSec.style.display='block';
   setTimeout(()=>upiSec.scrollIntoView({behavior:'smooth',block:'start'}),100);
 }
+*/
 
 // ============================================================
 // PAYMENT GATEWAY INTEGRATION (Razorpay / Python Backend)
@@ -4219,7 +4339,66 @@ if (!window.PAYMENT_BACKEND_URL && !PAYMENT_BACKEND_URL) {
 }
 let _gatewayBusy = false;
 
-async function payByGateway() {
+// mode: 'card' → cards + netbanking only (Razorpay)
+//       'app'  → UPI first — Razorpay lists every UPI app installed on the phone
+// appKey/appName: which app the customer tapped (label only, for the hint)
+//
+// Device check for the app flow: a real phone can be shown ONLY the UPI app
+// list (which is what the customer asked for). On a desktop, or inside an
+// Instagram/WhatsApp style in-app browser, no UPI app can be launched — with
+// UPI-only Razorpay dead-ends on "No appropriate payment method found", so we
+// keep cards + netbanking there purely as a fallback.
+function upiAppFlowOnly() {
+  const ua = navigator.userAgent || '';
+  const isMobileUa = /Android|iPhone|iPad|iPod|Mobile/i.test(ua);
+  const isInAppUa = /FBAN|FBAV|Instagram|Snapchat|MicroMessenger|WhatsApp|\bwv\)/i.test(ua);
+  return isMobileUa && !isInAppUa;
+}
+
+// Razorpay TEST keys cannot run the UPI app / intent flow at all — Razorpay's
+// own docs (Test Integration) state: "UPI payments should be tested in Live
+// Mode." Locking the checkout to UPI-only on a test key makes Razorpay answer
+// "No appropriate payment method found", because cards/netbanking are the only
+// methods test mode offers. So the UPI-only app screen is used ONLY with live
+// keys (rzp_live_...); with test keys the app row keeps cards + netbanking as a
+// usable fallback. Razorpay hides any method it cannot offer, so enabling the
+// extra methods costs nothing once you switch to live keys on a phone.
+function liveKeysInUse(keyId) {
+  return /^rzp_live_/i.test(String(keyId || ''));
+}
+
+// null = not known yet, true = live keys, false = test keys. Cached from
+// /api/config so the "Pay by App" list can tell the customer up-front that
+// UPI app payments need live keys.
+let _gatewayKeyMode = null;
+function fetchGatewayKeyMode() {
+  if (_gatewayKeyMode !== null) return;
+  fetch(`${PAYMENT_BACKEND_URL}/api/config`)
+    .then(r => (r.ok ? r.json() : null))
+    .then(d => {
+      if (d && d.razorpay_key_id) _gatewayKeyMode = liveKeysInUse(d.razorpay_key_id);
+      // Backend reports test_mode true for rzp_test_ keys — never let anyone
+      // mistake a test run for real, collected money.
+      if (d) showTestModeBadge(d.test_mode === true || _gatewayKeyMode === false);
+    })
+    .catch(() => {})
+    .then(() => { if (_payAppOpen) renderPayAppList(); });
+}
+
+let _testBadgeShown = false;
+function showTestModeBadge(on) {
+  if (!on || _testBadgeShown) return;
+  _testBadgeShown = true;
+  const b = document.createElement('div');
+  b.id = 'testModeBadge';
+  b.textContent = 'TEST MODE · no real payments';
+  b.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:14px;z-index:9999;background:var(--amber);color:#fff;font-size:11px;font-weight:800;letter-spacing:0.06em;padding:7px 14px;border-radius:99px;box-shadow:0 8px 20px -6px rgba(0,0,0,0.35);pointer-events:none;text-transform:uppercase;';
+  document.body.appendChild(b);
+}
+
+async function payByGateway(mode, appKey, appName) {
+  const isApp = mode === 'app';
+  let appOnly = false;
   const myOrders = getCustomerOrders();
   const unpaid = myOrders.filter(o => o.payment !== 'paid');
   if (!unpaid.length) {
@@ -4235,10 +4414,7 @@ async function payByGateway() {
 
   if (_gatewayBusy) return;
   _gatewayBusy = true;
-  const gwBtn = document.getElementById('gatewayBtn');
-  if (gwBtn) { gwBtn.disabled = true; gwBtn.innerHTML = 'Opening payment gateway…'; }
-
-  showToast('Connecting to Payment Gateway...', 2500);
+  setPayButtonsBusy(true);
 
   const orderIds = unpaid.map(o => o.id);
   const custName = customerSession?.name || 'Guest';
@@ -4273,6 +4449,17 @@ async function payByGateway() {
     return;
   }
 
+  // Decide the Razorpay method set only now: we know whether the account is on
+  // live keys or test keys.
+  appOnly = isApp && liveKeysInUse(backendOrder && backendOrder.key_id) && upiAppFlowOnly();
+  showToast(isApp
+    ? (appOnly
+        ? (appKey === 'other' ? 'Opening UPI apps…' : 'Opening ' + (appName || 'UPI') + '…')
+        : (liveKeysInUse(backendOrder && backendOrder.key_id)
+            ? 'UPI app is browser me nahi khulegi — neeche UPI, Card ya NetBanking se pay karo'
+            : 'Test mode me UPI app flow nahi chalta — Card ya NetBanking se pay karein'))
+    : 'Connecting to Payment Gateway...', 2500);
+
   // Real Razorpay checkout — the order must come from the backend with provider 'razorpay'
   if (typeof Razorpay === 'undefined') {
     resetGatewayButton();
@@ -4292,6 +4479,12 @@ async function payByGateway() {
       name: restName,
       description: `Bill Payment for ${tableLabel}`,
       order_id: backendOrder.order_id,
+      // Only the method(s) the customer actually chose — no duplicate tabs.
+      method: isApp
+        ? (appOnly
+            ? { upi: true, card: false, netbanking: false, wallet: false, emi: false, paylater: false, nb: false, googlePay: false, applePay: false }
+            : { upi: true, card: true, netbanking: true, wallet: false, emi: false, paylater: false, nb: false, googlePay: false, applePay: false })
+        : { upi: false, card: true, netbanking: true, wallet: false, emi: false, paylater: false, nb: false, googlePay: false, applePay: false },
       prefill: {
         name: custName,
         contact: custPhone
@@ -4343,6 +4536,11 @@ async function payByGateway() {
       const why = resp && resp.error && resp.error.description ? resp.error.description : 'Payment failed';
       showToast('Payment failed: ' + why, 5000);
     });
+    if (isApp) {
+      rzp.on('payment.processing', function () {
+        showToast('App se payment bheja ja raha hai…', 3000);
+      });
+    }
     try { rzp.open(); }
     catch (e) {
       resetGatewayButton();
@@ -4351,19 +4549,33 @@ async function payByGateway() {
   }
 }
 
+// Disable/enable every action inside the single "Pay" section while the
+// Razorpay window is open. Each button keeps its original markup in data-*.
+function setPayButtonsBusy(busy) {
+  document.querySelectorAll('#paymentOptionsDiv [data-pay-btn]').forEach(b => {
+    b.disabled = busy;
+    if (busy) {
+      // Remember the real button content once, so it can be put back exactly.
+      if (!b.dataset.idleHtml) b.dataset.idleHtml = b.innerHTML;
+      b.innerHTML = b.classList.contains('pay-app-btn') ? 'Opening…' : 'Opening payment gateway…';
+    } else {
+      b.innerHTML = b.dataset.idleHtml
+        || ((b.getAttribute('data-icon') || '') + (b.getAttribute('data-label') || ''));
+      delete b.dataset.idleHtml;
+    }
+  });
+}
+
 function resetGatewayButton() {
   _gatewayBusy = false;
-  const gwBtn = document.getElementById('gatewayBtn');
-  if (gwBtn) {
-    gwBtn.disabled = false;
-    gwBtn.innerHTML = '<svg class="ic"><use href="#i-card"/></svg> Pay Online (Cards / UPI / NetBanking)';
-  }
+  setPayButtonsBusy(false);
 }
 
 
 
 function completeOrdersAsPaid(ordersToPay, payMethod) {
   _gatewayBusy = false;
+  setPayButtonsBusy(false);
   ordersToPay.forEach(o => {
     o.payment = 'paid';
     o.payMethod = payMethod || 'online';
@@ -4387,6 +4599,10 @@ function completeOrdersAsPaid(ordersToPay, payMethod) {
 // ============================================================
 // UPI CONFIRMATION (Customer side)
 // ============================================================
+/* LEGACY — DISABLED FOR NOW. Sirf confirmUpiPaid() ka UI (commented
+   out #billUpiSection) isko call karta tha. Online payment ab Razorpay
+   se verify hota hai, isliye isko chala gaya hai.
+   ============================================================
 function confirmUpiPaid(){
   const myOrders=getCustomerOrders();
   const unpaid=myOrders.filter(o=>o.payment!=='paid'&&o.payment!=='upi_pending');
@@ -4412,6 +4628,7 @@ function confirmUpiPaid(){
   renderMenuScreen();
   checkFloatingOrderButton();
 }
+============================================================ */
 
 // Modify endSession to allow exit if UPI is pending
 const originalEndSession = endSession;
